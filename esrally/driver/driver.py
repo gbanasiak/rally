@@ -1090,11 +1090,11 @@ class SamplePostprocessor:
                     )
 
         end = time.perf_counter()
-        self.logger.debug("Storing latency and service time took [%f] seconds.", (end - start))
+        self.logger.info("Storing latency and service time took [%f] seconds.", (end - start))
         start = end
         aggregates = self.throughput_calculator.calculate(raw_samples)
         end = time.perf_counter()
-        self.logger.debug("Calculating throughput took [%f] seconds.", (end - start))
+        self.logger.info("Calculating throughput took [%f] seconds.", (end - start))
         start = end
         for task, samples in aggregates.items():
             meta_data = self.merge(self.track_meta_data, self.challenge_meta_data, task.operation.meta_data, task.meta_data)
@@ -1112,7 +1112,7 @@ class SamplePostprocessor:
                     meta_data=meta_data,
                 )
         end = time.perf_counter()
-        self.logger.debug("Storing throughput took [%f] seconds.", (end - start))
+        self.logger.info("Storing throughput took [%f] seconds.", (end - start))
         start = end
         # this will be a noop for the in-memory metrics store. If we use an ES metrics store however, this will ensure that we already send
         # the data and also clear the in-memory buffer. This allows users to see data already while running the benchmark. In cases where
@@ -1122,8 +1122,8 @@ class SamplePostprocessor:
         # no need for frequent refreshes.
         self.metrics_store.flush(refresh=False)
         end = time.perf_counter()
-        self.logger.debug("Flushing the metrics store took [%f] seconds.", (end - start))
-        self.logger.debug(
+        self.logger.info("Flushing the metrics store took [%f] seconds.", (end - start))
+        self.logger.info(
             "Postprocessing [%d] raw samples (downsampled to [%d] samples) took [%f] seconds in total.",
             len(raw_samples),
             final_sample_count,
