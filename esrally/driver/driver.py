@@ -224,8 +224,8 @@ class DriverActor(actor.RallyActor):
     POST_PROCESS_INTERVAL_SECONDS = 30
 
     # sample threshold exceeding which will expedite post-processing
-    # aiming for at least 10 bulk requests, assuming 3 metric documents per raw sample
-    POST_PROCESS_SAMPLE_THRESHOLD = int(10 * metrics.EsClient.BULK_SIZE / 3)
+    # assumes 3 metric documents per raw sample
+    POST_PROCESS_SAMPLE_THRESHOLD = int(metrics.EsClient.THREAD_COUNT * metrics.EsClient.BULK_SIZE / 3)
 
     """
     Coordinates all workers. This is actually only a thin actor wrapper layer around ``Driver`` which does the actual work.
