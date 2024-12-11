@@ -41,6 +41,8 @@ class EsClient:
     Provides a stripped-down client interface that is easier to exchange for testing
     """
 
+    BULK_SIZE = 5000
+
     def __init__(self, client, cluster_version=None):
         self._client = client
         self.logger = logging.getLogger(__name__)
@@ -78,7 +80,7 @@ class EsClient:
         # pylint: disable=import-outside-toplevel
         import elasticsearch.helpers
 
-        self.guarded(elasticsearch.helpers.bulk, self._client, items, index=index, chunk_size=5000)
+        self.guarded(elasticsearch.helpers.bulk, self._client, items, index=index, chunk_size=EsClient.BULK_SIZE)
 
     def index(self, index, item, id=None):
         doc = {"_source": item}

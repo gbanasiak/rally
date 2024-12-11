@@ -223,6 +223,10 @@ class DriverActor(actor.RallyActor):
     # post-process request metrics every N seconds and send it to the metrics store
     POST_PROCESS_INTERVAL_SECONDS = 30
 
+    # sample threshold exceeding which will expedite post-processing
+    # aiming for at least 10 bulk requests, assuming 3 metric documents per raw sample
+    POST_PROCESS_SAMPLE_THRESHOLD = int(10 * metrics.EsClient.BULK_SIZE / 3)
+
     """
     Coordinates all workers. This is actually only a thin actor wrapper layer around ``Driver`` which does the actual work.
     """
@@ -301,7 +305,10 @@ class DriverActor(actor.RallyActor):
             self.driver.reset_relative_time()
         elif not self.driver.finished():
             self.post_process_timer += DriverActor.WAKEUP_INTERVAL_SECONDS
-            if self.post_process_timer >= DriverActor.POST_PROCESS_INTERVAL_SECONDS:
+            if (
+                self.post_process_timer >= DriverActor.POST_PROCESS_INTERVAL_SECONDS
+                or len(self.driver.raw_samples) > DriverActor.POST_PROCESS_SAMPLE_THRESHOLD
+            ):
                 self.post_process_timer = 0
                 self.driver.post_process_samples()
             self.driver.update_progress_message()
