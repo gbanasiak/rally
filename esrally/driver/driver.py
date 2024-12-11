@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import thespian.actors
 
@@ -704,11 +704,14 @@ class Driver:
         self.track = t
         self.challenge = select_challenge(self.config, self.track)
         self.quiet = self.config.opts("system", "quiet.mode", mandatory=False, default_value=False)
-        downsample_factor = int(self.config.opts("reporting", "metrics.request.downsample.factor", mandatory=False, default_value=1))
-        self.metrics_store = metrics.metrics_store(cfg=self.config, track=self.track.name, challenge=self.challenge.name, read_only=False)
 
+        downsample_factor = int(self.config.opts("reporting", "metrics.request.downsample.factor", mandatory=False, default_value=1))
+        downsampled_tasks = None
+        if downsampled_tasks_cfg := self.config.opts("reporting", "metrics.request.downsampled.tasks", mandatory=False, default_value=None):
+            downsampled_tasks = downsampled_tasks_cfg.split(",")
+        self.metrics_store = metrics.metrics_store(cfg=self.config, track=self.track.name, challenge=self.challenge.name, read_only=False)
         self.sample_post_processor = SamplePostprocessor(
-            self.metrics_store, downsample_factor, self.track.meta_data, self.challenge.meta_data
+            self.metrics_store, downsample_factor, self.track.meta_data, self.challenge.meta_data, downsampled_tasks
         )
 
         es_clients = self.create_es_clients()
@@ -1009,13 +1012,16 @@ class Driver:
 
 
 class SamplePostprocessor:
-    def __init__(self, metrics_store, downsample_factor, track_meta_data, challenge_meta_data):
+    def __init__(
+        self, metrics_store, downsample_factor, track_meta_data, challenge_meta_data, downsampled_tasks: Optional[List[str]] = None
+    ):
         self.logger = logging.getLogger(__name__)
         self.metrics_store = metrics_store
         self.track_meta_data = track_meta_data
         self.challenge_meta_data = challenge_meta_data
         self.throughput_calculator = ThroughputCalculator()
         self.downsample_factor = downsample_factor
+        self.downsampled_tasks = downsampled_tasks
 
     def __call__(self, raw_samples):
         if len(raw_samples) == 0:
@@ -1024,7 +1030,7 @@ class SamplePostprocessor:
         start = total_start
         final_sample_count = 0
         for idx, sample in enumerate(raw_samples):
-            if idx % self.downsample_factor == 0:
+            if idx % self.downsample_factor == 0 or (self.downsampled_tasks is not None and sample.task.name not in self.downsampled_tasks):
                 final_sample_count += 1
                 client_id_meta_data = {"client_id": sample.client_id}
                 meta_data = self.merge(

@@ -20,6 +20,7 @@ import io
 import threading
 import time
 from datetime import datetime
+from typing import List
 from unittest import mock
 
 import elastic_transport
@@ -355,14 +356,14 @@ def op(name, operation_type):
 
 
 class TestSamplePostprocessor:
-    def throughput(self, absolute_time, relative_time, value, meta_data=None):
+    def throughput(self, absolute_time, relative_time, value, meta_data=None, task="index"):
         if not meta_data:
             meta_data = {}
         return mock.call(
             name="throughput",
             value=value,
             unit="docs/s",
-            task="index",
+            task=task,
             operation="index-op",
             operation_type="bulk",
             sample_type=metrics.SampleType.Normal,
@@ -371,23 +372,23 @@ class TestSamplePostprocessor:
             meta_data=meta_data,
         )
 
-    def service_time(self, absolute_time, relative_time, value, meta_data=None):
-        return self.request_metric(absolute_time, relative_time, "service_time", value, meta_data)
+    def service_time(self, absolute_time, relative_time, value, meta_data=None, task="index"):
+        return self.request_metric(absolute_time, relative_time, "service_time", value, meta_data, task)
 
-    def processing_time(self, absolute_time, relative_time, value, meta_data=None):
-        return self.request_metric(absolute_time, relative_time, "processing_time", value, meta_data)
+    def processing_time(self, absolute_time, relative_time, value, meta_data=None, task="index"):
+        return self.request_metric(absolute_time, relative_time, "processing_time", value, meta_data, task)
 
-    def latency(self, absolute_time, relative_time, value, meta_data=None):
-        return self.request_metric(absolute_time, relative_time, "latency", value, meta_data)
+    def latency(self, absolute_time, relative_time, value, meta_data=None, task="index"):
+        return self.request_metric(absolute_time, relative_time, "latency", value, meta_data, task)
 
-    def request_metric(self, absolute_time, relative_time, name, value, meta_data=None):
+    def request_metric(self, absolute_time, relative_time, name, value, meta_data=None, task="index"):
         if not meta_data:
             meta_data = {}
         return mock.call(
             name=name,
             value=value,
             unit="ms",
-            task="index",
+            task=task,
             operation="index-op",
             operation_type="bulk",
             sample_type=metrics.SampleType.Normal,
@@ -440,6 +441,43 @@ class TestSamplePostprocessor:
             self.processing_time(38598, 24, 9.0, meta_data),
             self.throughput(38598, 24, 5000),
             self.throughput(38599, 25, 5000),
+        ]
+        metrics_store.put_value_cluster_level.assert_has_calls(calls)
+
+    @mock.patch("esrally.metrics.MetricsStore")
+    def test_downsamples_with_task_filtering(self, metrics_store):
+        post_process = driver.SamplePostprocessor(
+            metrics_store, downsample_factor=2, track_meta_data={}, challenge_meta_data={}, downsampled_tasks=["index-sampled"]
+        )
+
+        task_sampled = track.Task("index-sampled", track.Operation("index-op", "bulk", param_source="driver-test-param-source"))
+        task_other = track.Task("index-other", track.Operation("index-op", "bulk", param_source="driver-test-param-source"))
+
+        samples: List[driver.Sample] = [
+            driver.Sample(0, 38598, 24, 0, task_sampled, metrics.SampleType.Normal, None, 0.01, 0.007, 0.009, None, 5000, "docs", 1, 1 / 2),
+            driver.Sample(0, 38599, 25, 0, task_sampled, metrics.SampleType.Normal, None, 0.01, 0.007, 0.009, None, 5000, "docs", 2, 2 / 2),
+            driver.Sample(0, 38598, 24, 0, task_other, metrics.SampleType.Normal, None, 0.01, 0.007, 0.009, None, 5000, "docs", 1, 1 / 2),
+            driver.Sample(0, 38599, 25, 0, task_other, metrics.SampleType.Normal, None, 0.01, 0.007, 0.009, None, 5000, "docs", 2, 2 / 2),
+        ]
+
+        post_process(samples)
+        meta_data = {"client_id": 0}
+        calls = [
+            # only the first out of two request samples is included for sampled task, throughput metrics are still complete
+            # the non-sampled task is reported completely
+            self.latency(38598, 24, 10.0, meta_data, "index-sampled"),
+            self.service_time(38598, 24, 7.0, meta_data, "index-sampled"),
+            self.processing_time(38598, 24, 9.0, meta_data, "index-sampled"),
+            self.latency(38598, 24, 10.0, meta_data, "index-other"),
+            self.service_time(38598, 24, 7.0, meta_data, "index-other"),
+            self.processing_time(38598, 24, 9.0, meta_data, "index-other"),
+            self.latency(38599, 25, 10.0, meta_data, "index-other"),
+            self.service_time(38599, 25, 7.0, meta_data, "index-other"),
+            self.processing_time(38599, 25, 9.0, meta_data, "index-other"),
+            self.throughput(38598, 24, 5000, task="index-sampled"),
+            self.throughput(38599, 25, 5000, task="index-sampled"),
+            self.throughput(38598, 24, 5000, task="index-other"),
+            self.throughput(38599, 25, 5000, task="index-other"),
         ]
         metrics_store.put_value_cluster_level.assert_has_calls(calls)
 
