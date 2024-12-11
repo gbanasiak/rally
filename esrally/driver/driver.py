@@ -223,10 +223,6 @@ class DriverActor(actor.RallyActor):
     # post-process request metrics every N seconds and send it to the metrics store
     POST_PROCESS_INTERVAL_SECONDS = 30
 
-    # sample threshold exceeding which will expedite post-processing
-    # assumes 3 metric documents per raw sample
-    POST_PROCESS_SAMPLE_THRESHOLD = int(metrics.EsClient.THREAD_COUNT * metrics.EsClient.BULK_SIZE / 3)
-
     """
     Coordinates all workers. This is actually only a thin actor wrapper layer around ``Driver`` which does the actual work.
     """
@@ -307,7 +303,7 @@ class DriverActor(actor.RallyActor):
             self.post_process_timer += DriverActor.WAKEUP_INTERVAL_SECONDS
             if (
                 self.post_process_timer >= DriverActor.POST_PROCESS_INTERVAL_SECONDS
-                or len(self.driver.raw_samples) > DriverActor.POST_PROCESS_SAMPLE_THRESHOLD
+                or len(self.driver.raw_samples) > self.driver.sample_threshold
             ):
                 self.post_process_timer = 0
                 self.driver.post_process_samples()
@@ -606,6 +602,7 @@ class Driver:
         self.raw_samples = []
         self.most_recent_sample_per_client = {}
         self.sample_post_processor = None
+        self.sample_threshold: Optional[int] = None
 
         self.number_of_steps = 0
         self.currently_completed = 0
@@ -712,6 +709,8 @@ class Driver:
         self.challenge = select_challenge(self.config, self.track)
         self.quiet = self.config.opts("system", "quiet.mode", mandatory=False, default_value=False)
         downsample_factor = int(self.config.opts("reporting", "metrics.request.downsample.factor", mandatory=False, default_value=1))
+        # sample threshold exceeding which will expedite post-processing, assumes 3 metric documents per raw sample
+        self.sample_threshold = int(downsample_factor * metrics.EsClient.THREAD_COUNT * metrics.EsClient.BULK_SIZE / 3)
         self.metrics_store = metrics.metrics_store(cfg=self.config, track=self.track.name, challenge=self.challenge.name, read_only=False)
 
         self.sample_post_processor = SamplePostprocessor(
