@@ -301,10 +301,7 @@ class DriverActor(actor.RallyActor):
             self.driver.reset_relative_time()
         elif not self.driver.finished():
             self.post_process_timer += DriverActor.WAKEUP_INTERVAL_SECONDS
-            if (
-                self.post_process_timer >= DriverActor.POST_PROCESS_INTERVAL_SECONDS
-                or len(self.driver.raw_samples) > self.driver.sample_threshold
-            ):
+            if self.post_process_timer >= DriverActor.POST_PROCESS_INTERVAL_SECONDS:
                 self.post_process_timer = 0
                 self.driver.post_process_samples()
             self.driver.update_progress_message()
@@ -602,7 +599,6 @@ class Driver:
         self.raw_samples = []
         self.most_recent_sample_per_client = {}
         self.sample_post_processor = None
-        self.sample_threshold: Optional[int] = None
 
         self.number_of_steps = 0
         self.currently_completed = 0
@@ -709,8 +705,6 @@ class Driver:
         self.challenge = select_challenge(self.config, self.track)
         self.quiet = self.config.opts("system", "quiet.mode", mandatory=False, default_value=False)
         downsample_factor = int(self.config.opts("reporting", "metrics.request.downsample.factor", mandatory=False, default_value=1))
-        # sample threshold exceeding which will expedite post-processing, assumes 3 metric documents per raw sample
-        self.sample_threshold = int(downsample_factor * metrics.EsClient.THREAD_COUNT * metrics.EsClient.BULK_SIZE / 3)
         self.metrics_store = metrics.metrics_store(cfg=self.config, track=self.track.name, challenge=self.challenge.name, read_only=False)
 
         self.sample_post_processor = SamplePostprocessor(
