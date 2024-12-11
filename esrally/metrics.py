@@ -80,7 +80,10 @@ class EsClient:
         # pylint: disable=import-outside-toplevel
         import elasticsearch.helpers
 
-        self.guarded(elasticsearch.helpers.bulk, self._client, items, index=index, chunk_size=EsClient.BULK_SIZE)
+        def parallel_bulk(*args, **kwargs):
+            collections.deque(elasticsearch.helpers.parallel_bulk(*args, **kwargs), 0)
+
+        self.guarded(parallel_bulk, self._client, items, index=index, chunk_size=EsClient.BULK_SIZE)
 
     def index(self, index, item, id=None):
         doc = {"_source": item}
