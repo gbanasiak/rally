@@ -42,7 +42,6 @@ class EsClient:
     """
 
     BULK_SIZE = 5000
-    THREAD_COUNT = 8
 
     def __init__(self, client, cluster_version=None):
         self._client = client
@@ -81,10 +80,7 @@ class EsClient:
         # pylint: disable=import-outside-toplevel
         import elasticsearch.helpers
 
-        def parallel_bulk(*args, **kwargs):
-            collections.deque(elasticsearch.helpers.parallel_bulk(*args, **kwargs), 0)
-
-        self.guarded(parallel_bulk, self._client, items, index=index, thread_count=EsClient.THREAD_COUNT, chunk_size=EsClient.BULK_SIZE)
+        self.guarded(elasticsearch.helpers.bulk, self._client, items, index=index, chunk_size=EsClient.BULK_SIZE)
 
     def index(self, index, item, id=None):
         doc = {"_source": item}
