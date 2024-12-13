@@ -5,6 +5,8 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 path = "esrally/_version.py"
 
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [project]
 name = "esrally"
@@ -63,7 +65,7 @@ dependencies = [
     "Jinja2==3.1.4",
     "markupsafe==2.0.1",
     # License: MIT
-    "thespian==3.10.1",
+    "thespian @ git+https://github.com/gbanasiak/Thespian.git@logsdb-scaling",
     # recommended library for thespian to identify actors more easily with `ps`
     # "setproctitle==1.1.10",
     # always use the latest version, these are certificate files...
