@@ -2016,35 +2016,51 @@ class IndexStats(InternalTelemetryDevice):
             self.first_time = False
 
     def on_benchmark_stop(self):
-        self.logger.info("Gathering index stats for all primaries on benchmark stop.")
+        self.logger.info("Gathering index stats on benchmark stop.")
         index_stats = self.index_stats()
-        # import json
-        # self.logger.debug("Returned index stats:\n%s", json.dumps(index_stats, indent=2))
-        if "_all" not in index_stats or "primaries" not in index_stats["_all"]:
-            return
-        p = index_stats["_all"]["primaries"]
-        # actually this is add_count
-        self.add_metrics(self.extract_value(p, ["segments", "count"]), "segments_count")
-        self.add_metrics(self.extract_value(p, ["segments", "memory_in_bytes"]), "segments_memory_in_bytes", "byte")
+        if "_all" in index_stats:
+            if "primaries" in index_stats["_all"]:
+                p = index_stats["_all"]["primaries"]
+                # actually this is add_count
+                self.add_metrics(self.extract_value(p, ["segments", "count"]), "segments_count")
+                self.add_metrics(self.extract_value(p, ["segments", "memory_in_bytes"]), "segments_memory_in_bytes", "byte")
 
-        for t in self.index_times(index_stats):
-            self.metrics_store.put_doc(doc=t, level=metrics.MetaInfoScope.cluster)
+                for t in self.index_times(index_stats):
+                    self.metrics_store.put_doc(doc=t, level=metrics.MetaInfoScope.cluster)
 
-        for ct in self.index_counts(index_stats):
-            self.metrics_store.put_doc(doc=ct, level=metrics.MetaInfoScope.cluster)
+                for ct in self.index_counts(index_stats):
+                    self.metrics_store.put_doc(doc=ct, level=metrics.MetaInfoScope.cluster)
 
-        self.add_metrics(self.extract_value(p, ["segments", "doc_values_memory_in_bytes"]), "segments_doc_values_memory_in_bytes", "byte")
-        self.add_metrics(
-            self.extract_value(p, ["segments", "stored_fields_memory_in_bytes"]), "segments_stored_fields_memory_in_bytes", "byte"
-        )
-        self.add_metrics(self.extract_value(p, ["segments", "terms_memory_in_bytes"]), "segments_terms_memory_in_bytes", "byte")
-        self.add_metrics(self.extract_value(p, ["segments", "norms_memory_in_bytes"]), "segments_norms_memory_in_bytes", "byte")
-        self.add_metrics(self.extract_value(p, ["segments", "points_memory_in_bytes"]), "segments_points_memory_in_bytes", "byte")
-        self.add_metrics(
-            self.extract_value(index_stats, ["_all", "total", "store", "total_data_set_size_in_bytes"]), "dataset_size_in_bytes", "byte"
-        )
-        self.add_metrics(self.extract_value(index_stats, ["_all", "total", "store", "size_in_bytes"]), "store_size_in_bytes", "byte")
-        self.add_metrics(self.extract_value(index_stats, ["_all", "total", "translog", "size_in_bytes"]), "translog_size_in_bytes", "byte")
+                self.add_metrics(
+                    self.extract_value(p, ["segments", "doc_values_memory_in_bytes"]), "segments_doc_values_memory_in_bytes", "byte"
+                )
+                self.add_metrics(
+                    self.extract_value(p, ["segments", "stored_fields_memory_in_bytes"]), "segments_stored_fields_memory_in_bytes", "byte"
+                )
+                self.add_metrics(self.extract_value(p, ["segments", "terms_memory_in_bytes"]), "segments_terms_memory_in_bytes", "byte")
+                self.add_metrics(self.extract_value(p, ["segments", "norms_memory_in_bytes"]), "segments_norms_memory_in_bytes", "byte")
+                self.add_metrics(self.extract_value(p, ["segments", "points_memory_in_bytes"]), "segments_points_memory_in_bytes", "byte")
+                self.add_metrics(self.extract_value(p, ["shard_stats", "total_count"]), "shards_primaries_count")
+
+            if "total" in index_stats["_all"]:
+                t = index_stats["_all"]["total"]
+                self.add_metrics(self.extract_value(t, ["store", "total_data_set_size_in_bytes"]), "dataset_size_in_bytes", "byte")
+                self.add_metrics(self.extract_value(t, ["store", "size_in_bytes"]), "store_size_in_bytes", "byte")
+                self.add_metrics(self.extract_value(t, ["translog", "size_in_bytes"]), "translog_size_in_bytes", "byte")
+                self.add_metrics(self.extract_value(t, ["translog", "size_in_bytes"]), "translog_size_in_bytes", "byte")
+                self.add_metrics(self.extract_value(t, ["shard_stats", "total_count"]), "shards_total_count")
+
+        self.logger.info("Gathering cluster stats on benchmark stop.")
+        cluster_stats = self.cluster_stats()
+        if "indices" in cluster_stats:
+            self.add_metrics(self.extract_value(cluster_stats, ["indices", "count"]), "indices_count")
+
+    def cluster_stats(self):
+        try:
+            return self.client.cluster.stats()
+        except BaseException:
+            self.logger.exception("Could not retrieve cluster stats.")
+            return {}
 
     def index_stats(self):
         # noinspection PyBroadException

@@ -4007,7 +4007,7 @@ class TestIndexStats:
         t = telemetry.Telemetry(cfg, devices=[device])
         t.on_benchmark_start()
 
-        response = {
+        indices_response = {
             "_all": {
                 "primaries": {
                     "segments": {
@@ -4034,6 +4034,7 @@ class TestIndexStats:
                         "total_time_in_millis": 0,
                         "total": 0,
                     },
+                    "shard_stats": {"total_count": 123},
                 },
                 "total": {
                     "store": {
@@ -4046,6 +4047,7 @@ class TestIndexStats:
                         "uncommitted_operations": 0,
                         "uncommitted_size_in_bytes": 430,
                     },
+                    "shard_stats": {"total_count": 246},
                 },
             },
             "indices": {
@@ -4143,13 +4145,16 @@ class TestIndexStats:
             },
         }
 
-        client.indices = SubClient(stats=response)
+        cluster_response = {"indices": {"count": 123}}
+
+        client.indices = SubClient(stats=indices_response)
+        client.cluster = SubClient(stats=cluster_response)
 
         t.on_benchmark_stop()
 
         # we cannot rely on stable iteration order so we need to extract the values at runtime from the dict
         primary_shards = []
-        for shards in response["indices"].values():
+        for shards in indices_response["indices"].values():
             for shard in shards["shards"].values():
                 for shard_metrics in shard:
                     if shard_metrics["routing"]["primary"]:
@@ -4224,6 +4229,9 @@ class TestIndexStats:
                 mock.call("store_size_in_bytes", 2113867510, "byte"),
                 mock.call("dataset_size_in_bytes", 112113867510, "byte"),
                 mock.call("translog_size_in_bytes", 2647984713, "byte"),
+                mock.call("shards_primaries_count", 123),
+                mock.call("shards_total_count", 246),
+                mock.call("indices_count", 123),
             ],
             any_order=True,
         )

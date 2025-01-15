@@ -2094,6 +2094,11 @@ class GlobalStatsCalculator:
         median_segment_count = self.median("segments_count")
         result.segment_count = int(median_segment_count) if median_segment_count is not None else median_segment_count
 
+        self.logger.debug("Gathering shard and index counts.")
+        result.shard_primary_count = self.sum("shards_primaries_count")
+        result.shard_total_count = self.sum("shards_total_count")
+        result.index_count = self.sum("indices_count")
+
         self.logger.debug("Gathering transform processing times.")
         result.total_transform_processing_times = self.total_transform_metric("total_transform_processing_time")
         result.total_transform_index_times = self.total_transform_metric("total_transform_index_time")
@@ -2277,6 +2282,9 @@ class GlobalStats:
         self.store_size = self.v(d, "store_size")
         self.translog_size = self.v(d, "translog_size")
         self.segment_count = self.v(d, "segment_count")
+        self.shard_primary_count = self.v(d, "shard_primary_count")
+        self.shard_total_count = self.v(d, "shard_total_count")
+        self.index_count = self.v(d, "index_count")
 
         self.total_transform_search_times = self.v(d, "total_transform_search_times")
         self.total_transform_index_times = self.v(d, "total_transform_index_times")

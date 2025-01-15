@@ -141,6 +141,8 @@ class SummaryReporter:
         metrics_table.extend(self._report_disk_usage(stats))
         metrics_table.extend(self._report_segment_memory(stats))
         metrics_table.extend(self._report_segment_counts(stats))
+        metrics_table.extend(self._report_shard_counts(stats))
+        metrics_table.extend(self._report_index_counts(stats))
 
         metrics_table.extend(self._report_transform_stats(stats))
 
@@ -311,6 +313,17 @@ class SummaryReporter:
     def _report_segment_counts(self, stats):
         return self._join(self._line("Segment count", "", stats.segment_count, ""))
 
+    def _report_shard_counts(self, stats):
+        return self._join(
+            self._line("Shard total count", "", stats.shard_total_count, ""),
+            self._line("Shard primary count", "", stats.shard_primary_count, ""),
+        )
+
+    def _report_index_counts(self, stats):
+        return self._join(
+            self._line("Index count", "", stats.index_count, ""),
+        )
+
     def _report_transform_stats(self, stats):
         lines = []
         for processing_time in stats.total_transform_processing_times:
@@ -409,6 +422,8 @@ class ComparisonReporter:
         metrics_table.extend(self._report_disk_usage(baseline_stats, contender_stats))
         metrics_table.extend(self._report_segment_memory(baseline_stats, contender_stats))
         metrics_table.extend(self._report_segment_counts(baseline_stats, contender_stats))
+        metrics_table.extend(self._report_shard_counts(baseline_stats, contender_stats))
+        metrics_table.extend(self._report_index_counts(baseline_stats, contender_stats))
         metrics_table.extend(self._report_transform_processing_times(baseline_stats, contender_stats))
         metrics_table.extend(self._report_ingest_pipeline_counts(baseline_stats, contender_stats))
         metrics_table.extend(self._report_ingest_pipeline_times(baseline_stats, contender_stats))
@@ -980,6 +995,38 @@ class ComparisonReporter:
                 "Segment count",
                 baseline_stats.segment_count,
                 contender_stats.segment_count,
+                "",
+                "",
+                treat_increase_as_improvement=False,
+            )
+        )
+
+    def _report_shard_counts(self, baseline_stats, contender_stats):
+        return self._join(
+            self._line(
+                "Shard primary count",
+                baseline_stats.shard_primary_count,
+                contender_stats.shard_primary_count,
+                "",
+                "",
+                treat_increase_as_improvement=False,
+            ),
+            self._line(
+                "Shard total count",
+                baseline_stats.shard_total_count,
+                contender_stats.shard_total_count,
+                "",
+                "",
+                treat_increase_as_improvement=False,
+            ),
+        )
+
+    def _report_index_counts(self, baseline_stats, contender_stats):
+        return self._join(
+            self._line(
+                "Index count",
+                baseline_stats.index_count,
+                contender_stats.index_count,
                 "",
                 "",
                 treat_increase_as_improvement=False,
