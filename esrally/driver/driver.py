@@ -1915,6 +1915,7 @@ class AsyncExecutor:
         if rampup_wait_time:
             self.logger.debug("client id [%s] waiting [%.2f]s for ramp-up.", self.client_id, rampup_wait_time)
             await asyncio.sleep(rampup_wait_time)
+        pause_interval = self.task.params.get("pause-interval", None)
 
         self.logger.debug("Entering main loop for client id [%s].", self.client_id)
         # noinspection PyBroadException
@@ -1994,6 +1995,11 @@ class AsyncExecutor:
                 if completed:
                     self.logger.info("Task [%s] is considered completed due to external event.", self.task)
                     break
+
+                if not throughput_throttled:
+                    if pause_interval is not None:
+                        await asyncio.sleep(pause_interval)
+
         except BaseException as e:
             self.logger.exception("Could not execute schedule")
             raise exceptions.RallyError(f"Cannot run task [{self.task}]: {e}") from None
