@@ -1916,6 +1916,7 @@ class AsyncExecutor:
             self.logger.debug("client id [%s] waiting [%.2f]s for ramp-up.", self.client_id, rampup_wait_time)
             await asyncio.sleep(rampup_wait_time)
         pause_interval = self.task.params.get("pause-interval", None)
+        pause_factor = self.task.params.get("pause-factor", None)
 
         self.logger.debug("Entering main loop for client id [%s].", self.client_id)
         # noinspection PyBroadException
@@ -1999,6 +2000,10 @@ class AsyncExecutor:
                 if not throughput_throttled:
                     if pause_interval is not None:
                         await asyncio.sleep(pause_interval)
+                    if pause_factor is not None:
+                        pause = service_time * pause_factor
+                        self.logger.info("Pausing for %f due to pause factor of %f. Service time was %f.", pause, pause_factor, service_time)
+                        await asyncio.sleep(pause)
 
         except BaseException as e:
             self.logger.exception("Could not execute schedule")
