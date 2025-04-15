@@ -536,6 +536,7 @@ class BulkIndex(Runner):
         meta_data.update(stats)
         if not stats["success"]:
             meta_data["error-type"] = "bulk"
+            self.logger.info("Bulk request was not successful.\nbody = [%s]\nresponse = [%s]", params["body"], response)
         return meta_data
 
     def detailed_stats(self, params, response):
