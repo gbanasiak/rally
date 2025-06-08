@@ -405,7 +405,7 @@ class TestGc:
     def test_sets_options_for_java_9_or_above(self):
         gc = telemetry.Gc(telemetry_params={}, log_root="/var/log", java_major_version=random.randint(9, 999))
         assert gc.java_opts("/var/log/defaults-node-0.gc.log") == [
-            "-Xlog:gc*=info,safepoint=info,age*=trace:file=/var/log/defaults-node-0.gc.log:utctime,uptimemillis,level,tags:filecount=0"
+            "-Xlog:gc*=info,safepoint=info,age*=trace:file=/var/log/defaults-node-0.gc.log:utctime,level,tags:filecount=0"
         ]
 
     def test_can_override_options_for_java_9_or_above(self):
@@ -413,7 +413,7 @@ class TestGc:
             telemetry_params={"gc-log-config": "gc,safepoint"}, log_root="/var/log", java_major_version=random.randint(9, 999)
         )
         assert gc.java_opts("/var/log/defaults-node-0.gc.log") == [
-            "-Xlog:gc,safepoint:file=/var/log/defaults-node-0.gc.log:utctime,uptimemillis,level,tags:filecount=0"
+            "-Xlog:gc,safepoint:file=/var/log/defaults-node-0.gc.log:utctime,level,tags:filecount=0"
         ]
 
 

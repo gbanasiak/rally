@@ -343,7 +343,7 @@ class Gc(TelemetryDevice):
         else:
             log_config = self.telemetry_params.get("gc-log-config", "gc*=info,safepoint=info,age*=trace")
             # see https://docs.oracle.com/javase/9/tools/java.htm#JSWOR-GUID-BE93ABDC-999C-4CB5-A88B-1994AAAC74D5
-            return [f"-Xlog:{log_config}:file={log_file}:utctime,uptimemillis,level,tags:filecount=0"]
+            return [f"-Xlog:{log_config}:file={log_file}:utctime,level,tags:filecount=0"]
 
 
 class Heapdump(TelemetryDevice):
